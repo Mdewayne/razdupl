@@ -5,6 +5,7 @@ from datetime import datetime
 
 from moex.scripts.manager import fetch_data
 from moex.db.create_table import create_table_if_not_exists
+from moex.db.to_clickhouse import transfer_to_clickhouse
 from moex.config import MOEX_STOCKS
 
 
@@ -34,6 +35,9 @@ with DAG(
         )
         fetch_tasks.append(fetch_task)
 
-    
+    transfer_to_clickhouse = PythonOperator(
+        task_id='transfer_to_clickhouse',
+        python_callable=transfer_to_clickhouse,
+    )
 
-    start >> create_table >> fetch_tasks >> end
+    start >> create_table >> fetch_tasks >> transfer_to_clickhouse >> end

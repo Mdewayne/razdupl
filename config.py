@@ -15,3 +15,11 @@ MOEX_CONFIG = {
 }
 
 PG_CONN_ID = "pg_app"
+
+CLICKHOUSE_HOST = "clickhouse"
+CLICKHOUSE_PORT = "8123"
+CLICKHOUSE_DB = "default"
+
+POSTGRES_TABLE = "moex_prices"
+CLICKHOUSE_TABLE = "moex_prices_click"
+CLICKHOUSE_EXTERNAL_TABLE = "moex_prices_ext"
