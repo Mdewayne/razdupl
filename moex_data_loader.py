@@ -4,7 +4,7 @@ from airflow.operators.empty import EmptyOperator
 from datetime import datetime
 
 from moex.scripts.manager import fetch_data
-from moex.scripts.db import store_prices_to_postgres
+from moex.db.create_table import create_table_if_not_exists
 from moex.config import MOEX_STOCKS
 
 
@@ -20,7 +20,11 @@ with DAG(
     start = EmptyOperator(task_id="start")
     end = EmptyOperator(task_id="end")
 
-    # 1. Параллельно фетчим цены по тикерам
+    create_table = PythonOperator(
+        task_id="create_table_if_not_exists",
+        python_callable=create_table_if_not_exists,
+    )
+
     fetch_tasks = []
     for ticker in MOEX_STOCKS:
         fetch_task = PythonOperator(
@@ -30,15 +34,6 @@ with DAG(
         )
         fetch_tasks.append(fetch_task)
 
-    # 2. После всех фетчей – одним шагом пишем в Postgres
-    store = PythonOperator(
-        task_id="store_prices_to_postgres",
-        python_callable=store_prices_to_postgres,
-    )
+    
 
-    start >> fetch_tasks >> store >> end
-
-
-
-
-
+    start >> create_table >> fetch_tasks >> end

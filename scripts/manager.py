@@ -1,13 +1,9 @@
 from moex.scripts.api import request_to_api
 from moex.utils.extract_last_price import extract_last_price
+from moex.utils.save_price import save_price
 
 
 def fetch_data(ticker, **context):
-    """
-    Вызывается из PythonOperator.
-    Забирает данные c MOEX и возвращает цену, но НИЧЕГО не сохраняет сам.
-    Сохранением в Postgres занимается отдельный шаг DAG-а.
-    """
 
     data_interval_start = context["data_interval_start"]
     data_interval_end = context["data_interval_end"]
@@ -19,4 +15,4 @@ def fetch_data(ticker, **context):
 
     last_price = extract_last_price(data)
 
-    return {"symbol": ticker, "price": last_price}
+    save_price(ticker, last_price)

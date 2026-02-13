@@ -13,3 +13,5 @@ MOEX_CONFIG = {
         "marketdata.columns": "SECID,BOARDID,LAST",
     },
 }
+
+PG_CONN_ID = "pg_app"
