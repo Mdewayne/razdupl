@@ -1,4 +1,6 @@
 import logging
+from jinja2 import Template
+import airflow.macros as macros
 from airflow.providers.postgres.hooks.postgres import PostgresHook
 from moex.db.run_click import execute_clickhouse_sql
 from moex.config import (
@@ -42,19 +44,34 @@ def setup_clickhouse_tables():
 def transfer_data_to_clickhouse(start_time, end_time):
     """Переносит данные из PostgreSQL в ClickHouse за указанный период"""
     
-    sql_transfer = f"""
-    INSERT INTO {CLICKHOUSE_TABLE}
-    SELECT 
-        id,
-        symbol,
-        toFloat64(last_price) as last_price,
-        ts
-    FROM {CLICKHOUSE_EXTERNAL_TABLE}
-    WHERE ts BETWEEN toDateTime('{start_time}') AND toDateTime('{end_time}');
-    """
+    template = Template("""
+        INSERT INTO {{ clickhouse_table }}
+        SELECT 
+            id,
+            symbol,
+            toFloat64(last_price) as last_price,
+            ts
+        FROM {{ clickhouse_external_table }}
+        WHERE ts BETWEEN toDateTime('{{ data_interval_start }}')
+                 AND toDateTime(
+                        {% if data_interval_start == data_interval_end %}
+                            '{{ macros.datetime.now().strftime('%Y-%m-%d %H:%M:%S') }}'
+                        {% else %}
+                            '{{ data_interval_end }}'
+                        {% endif %}
+                    )
+    """)
+
+    rendered_sql = template.render(
+        clickhouse_table=CLICKHOUSE_TABLE,
+        clickhouse_external_table=CLICKHOUSE_EXTERNAL_TABLE,
+        data_interval_start=start_time,
+        data_interval_end=end_time,
+        macros=macros
+    )
     
-    result = execute_clickhouse_sql(sql_transfer)
-    logging.info(f"SQL executed successfully: Data transferred for period {start_time} - {end_time} - {result}")
+    result = execute_clickhouse_sql(rendered_sql)
+    logging.info(f"SQL executed successfully: Data after {start_time} transferred - {result}")
 
 def check_transfer_result(start_time, end_time):
     """Проверяет сколько данных загружено за период"""
@@ -77,10 +94,6 @@ def transfer_to_clickhouse(**context):
 
     start_time = context["data_interval_start"].strftime('%Y-%m-%d %H:%M:%S')
     end_time = context["data_interval_end"].strftime('%Y-%m-%d %H:%M:%S')
-    if start_time == end_time:
-        from datetime import datetime
-        end_time = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
-        logging.info(f"Manual run detected, using end_time = now: {end_time}")
 
     setup_clickhouse_tables()
     transfer_data_to_clickhouse(start_time, end_time)
