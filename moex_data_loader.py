@@ -7,7 +7,9 @@ from moex.scripts.manager import fetch_data
 from moex.db.create_table import create_table_if_not_exists
 from moex.db.to_clickhouse import transfer_to_clickhouse
 from moex.config import MOEX_STOCKS
+from airflow.datasets import Dataset
 
+moex_dataset = Dataset("moex_loader_done")
 
 with DAG(
     "moex_data_loader",
@@ -19,7 +21,8 @@ with DAG(
 ) as dag:
 
     start = EmptyOperator(task_id="start")
-    end = EmptyOperator(task_id="end")
+    end = EmptyOperator(task_id="end",
+        outlets=[moex_dataset])
 
     create_table = PythonOperator(
         task_id="create_table_if_not_exists",
